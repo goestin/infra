@@ -1,0 +1,73 @@
+# vim: set ts=2 sw=2 expandtab filetype=yaml
+# 
+# howto:
+# copy _sample_.env to .env en modify according to taste.
+# copy _sample_grafana.env to grafana.env en modify according to taste.
+version: '2'
+services:
+  traefik:
+    image: traefik:latest
+    command: 
+      - --web
+      - --docker 
+      - --docker.exposedbydefault=false 
+      - --docker.domain=${DNSDOMAIN} 
+      - --loglevel=INFO
+    ports:
+      - "80:80"
+      - "443:443"
+    expose:
+      - "8080"
+    networks:
+      - dmzhttp
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /dev/null:/traefik.toml
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend=traefik-dashboard"
+      - "traefik.port=8080"
+      - "traefik.frontend.rule=Host:traefik.${DNSDOMAIN}"
+
+  influxdb:
+    image: influxdb:latest
+    networks:
+      - databases
+    expose:
+      - "8086"
+    volumes:
+      - influxdb_db:/var/lib/influxdb
+
+  grafana:
+    image: grafana/grafana:latest
+    depends_on:
+      - traefik
+    env_file:
+      - grafana.env
+    networks:
+      - dmzhttp
+      - databases
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend=grafana"
+      - "traefik.frontend.rule=Host:grafana.localhost"
+      - "traefik.docker.network=infra_dmzhttp"
+    volumes:
+      - grafana_etc:/etc/grafana
+      - grafana_lib:/var/lib/grafana
+      - grafana_log:/var/log/grafana
+
+
+
+networks:
+  dmzhttp:
+    driver: bridge
+  databases:
+    driver: bridge
+
+
+volumes:
+  grafana_etc:
+  grafana_lib:
+  grafana_log:
+  influxdb_db:
