@@ -9,10 +9,6 @@ services:
     image: traefik:latest
     command: 
       - --web
-      - --docker 
-      - --docker.exposedbydefault=false 
-      - --docker.domain=${DNSDOMAIN} 
-      - --loglevel=INFO
     ports:
       - "80:80"
       - "443:443"
@@ -23,6 +19,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /dev/null:/traefik.toml
+      - ./traefik/traefik.toml:/etc/traefik/traefik.toml
+      - ./traefik/acme:/etc/traefik/acme
     labels:
       - "traefik.enable=true"
       - "traefik.backend=traefik-dashboard"
@@ -50,12 +48,37 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.backend=grafana"
-      - "traefik.frontend.rule=Host:grafana.localhost"
+      - "traefik.frontend.rule=Host:grafana.${DNSDOMAIN}"
       - "traefik.docker.network=infra_dmzhttp"
     volumes:
       - grafana_etc:/etc/grafana
       - grafana_lib:/var/lib/grafana
       - grafana_log:/var/log/grafana
+
+  iota2influxdb:
+    depends_on:
+      - influxdb
+    image: goestin/iota2influxdb
+    command: "--uri ${IOTA_URIS} --dbhost influxdb"
+    networks:
+      - databases
+
+  nextcloud:
+    depends_on:
+      - traefik
+    networks:
+      - dmzhttp
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend=nextcloud"
+      - "traefik.frontend.rule=Host:nextcloud.${DNSDOMAIN}"
+      - "traefik.docker.network=infra_dmzhttp"
+    image: nextcloud
+    ports:
+      - 8080:80
+    volumes:
+      - nextcloud:/var/www/html
+
 
 
 
@@ -71,3 +94,4 @@ volumes:
   grafana_lib:
   grafana_log:
   influxdb_db:
+  nextcloud:

@@ -1,2 +1,7 @@
 /.env
 /grafana.env
+*.crt
+*.key
+*.bak
+*acme.json
+*.toml
