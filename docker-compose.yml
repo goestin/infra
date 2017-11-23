@@ -3,7 +3,8 @@
 # howto:
 # copy _sample_.env to .env en modify according to taste.
 # copy _sample_grafana.env to grafana.env en modify according to taste.
-version: '2'
+
+version: '3'
 services:
   traefik:
     image: traefik:latest
@@ -62,6 +63,9 @@ services:
     command: "--uri ${IOTA_URIS} --dbhost influxdb"
     networks:
       - databases
+      - dmzhttp
+    links:
+      - iotanode:iotanode
 
   nextcloud:
     depends_on:
@@ -81,6 +85,35 @@ services:
 
 
 
+  iotanode:
+    depends_on:
+      - traefik
+    #image: bluedigits/iota-node
+    image: berndinox/iota-node
+    ports:
+      - 0.0.0.0:14625:14625/tcp
+      - 0.0.0.0:15600:15600/tcp
+    environment:
+      - API_PORT=14625
+      - TCP_PORT=15600
+      - MIN_MEMORY=4G
+      - MAX_MEMORY=6G
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.port=14625"
+      - "traefik.docker.network=infra_dmzhttp"
+      - "traefik.frontend.rule=Host:iota.${DNSDOMAIN}"
+      - "traefik.backend=iotanode"
+      - "traefik.frontend.entryPoints=https"
+    networks:
+      - dmzhttp
+    volumes:
+      - iotadata:/iri/data
+      - iotaconf:/iri/conf
+
+
+
 
 networks:
   dmzhttp:
@@ -95,3 +128,5 @@ volumes:
   grafana_log:
   influxdb_db:
   nextcloud:
+  iotadata:
+  iotaconf:
