@@ -10,6 +10,7 @@ services:
     image: traefik:latest
     command: 
       - --web
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
@@ -30,6 +31,7 @@ services:
 
   influxdb:
     image: influxdb:latest
+    restart: unless-stopped
     networks:
       - databases
     expose:
@@ -39,6 +41,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    restart: unless-stopped
     depends_on:
       - traefik
     env_file:
@@ -60,6 +63,7 @@ services:
     depends_on:
       - influxdb
     image: goestin/iota2influxdb
+    restart: unless-stopped
     command: "--uri ${IOTA_URIS} --dbhost influxdb"
     networks:
       - databases
@@ -70,6 +74,7 @@ services:
   nextcloud:
     depends_on:
       - traefik
+    restart: unless-stopped
     networks:
       - dmzhttp
     labels:
@@ -88,16 +93,19 @@ services:
   iotanode:
     depends_on:
       - traefik
-    #image: bluedigits/iota-node
-    image: berndinox/iota-node
+    image: bluedigits/iota-node
+    #image: berndinox/iota-node
     ports:
-      - 0.0.0.0:14625:14625/tcp
-      - 0.0.0.0:15600:15600/tcp
+      - 14625:14625/tcp
+      - 15600:15600/tcp
+    expose:
+      - 14625/tcp
     environment:
       - API_PORT=14625
       - TCP_PORT=15600
       - MIN_MEMORY=4G
       - MAX_MEMORY=6G
+      - REMOTE_API_LIMIT=attachToTangle
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -111,6 +119,27 @@ services:
     volumes:
       - iotadata:/iri/data
       - iotaconf:/iri/conf
+
+  iota-pm:
+    depends_on:
+      - iotanode
+    image: goestin/iota-peer-manager
+    expose:
+      - "8888/tcp"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=infra_dmzhttp"
+      - "traefik.frontend.rule=Host:iota-pm.${DNSDOMAIN}"
+      - "traefik.backend=iota-pm"
+    links:
+      - iotanode:iotanode
+    command:
+      - "-p"
+      - "0.0.0.0:8888"
+      - "-i"
+      - "http://iotanode:14625"
+    networks:
+      - dmzhttp
 
 
 
