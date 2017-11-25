@@ -94,7 +94,6 @@ services:
     depends_on:
       - traefik
     image: bluedigits/iota-node
-    #image: berndinox/iota-node
     ports:
       - 14625:14625/tcp
       - 15600:15600/tcp
@@ -103,7 +102,7 @@ services:
     environment:
       - API_PORT=14625
       - TCP_PORT=15600
-      - MIN_MEMORY=4G
+      - MIN_MEMORY=6G
       - MAX_MEMORY=6G
       - REMOTE_API_LIMIT=attachToTangle
     restart: unless-stopped
@@ -119,6 +118,8 @@ services:
     volumes:
       - iotadata:/iri/data
       - iotaconf:/iri/conf
+    command:
+      - "--rescan"
 
   iota-pm:
     depends_on:
